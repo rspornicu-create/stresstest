@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Continuity Stress Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f2; min-height: 100vh; padding: 2rem 1rem; color: #1a1a1a; }
+  h1 { font-size: 24px; font-weight: 600; margin-bottom: 0.4rem; }
+  .subtitle { font-size: 15px; color: #666; margin-bottom: 2rem; line-height: 1.6; }
+  .section { background: white; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .section-title { font-size: 12px; color: #999; margin-bottom: 1rem; letter-spacing: 0.05em; }
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { font-size: 14px; color: #1a1a1a; min-width: 200px; flex-shrink: 0; }
+  .row input[type=range] { flex: 1; accent-color: #1D9E75; }
+  .row .val { font-size: 14px; font-weight: 600; color: #1a1a1a; min-width: 48px; text-align: right; }
+  .scenarios { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1rem; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .scenario-btn { padding: 10px 8px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid #e8e8e8; background: white; color: #1a1a1a; transition: all 0.15s; text-align: center; }
+  .scenario-btn:hover { border-color: #aaa; background: #fafafa; }
+  .scenario-btn.active { border-color: #D85A30; background: #FAECE7; color: #712B13; font-weight: 600; }
+  .scenario-label { font-size: 12px; color: #999; margin-bottom: 8px; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .run-btn { display: block; width: 100%; max-width: 640px; margin: 0 auto 2rem; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: white; color: #1a1a1a; transition: all 0.15s; }
+  .run-btn:hover { background: #f5f5f5; }
+  .results { display: none; max-width: 640px; margin: 0 auto; }
+  .result-section { background: white; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+  .result-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 1.5rem; }
+  .survival-num { font-size: 42px; font-weight: 700; }
+  .survival-label { font-size: 14px; color: #666; }
+  .impact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1.25rem; }
+  .impact-card { background: #f8f8f6; border-radius: 8px; padding: 12px; }
+  .impact-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .impact-val { font-size: 20px; font-weight: 700; }
+  .verdict { border-left: 3px solid #D85A30; padding: 12px 16px; background: #f8f8f6; margin-bottom: 1.25rem; }
+  .verdict p { font-size: 14px; color: #333; line-height: 1.7; }
+  .actions-title { font-size: 12px; color: #999; margin-bottom: 10px; letter-spacing: 0.05em; }
+  .action-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; color: #1a1a1a; line-height: 1.5; }
+  .action-num { background: #f0f0ee; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; flex-shrink: 0; margin-top: 1px; }
+  .reset-btn { font-size: 13px; color: #888; cursor: pointer; background: none; border: none; padding: 0; margin-top: 1rem; display: block; }
+  .reset-btn:hover { color: #1a1a1a; }
+  @media (max-width: 500px) {
+    .scenarios { grid-template-columns: 1fr 1fr; }
+    .row label { min-width: 140px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<div style="max-width:640px;margin:0 auto 0;">
+  <h1>Business continuity stress test</h1>
+  <p class="subtitle">Set your business dependencies, choose a shock scenario, and see how long you survive.</p>
+</div>
+
+<div class="section">
+  <div class="section-title">REVENUE DEPENDENCIES</div>
+  <div class="row"><label>Top client revenue share</label><input type="range" min="5" max="100" step="5" value="40" id="top-client" oninput="sync(this,'tc-val')"><span class="val" id="tc-val">40%</span></div>
+  <div class="row"><label>Top 3 clients combined</label><input type="range" min="10" max="100" step="5" value="70" id="top3" oninput="sync(this,'t3-val')"><span class="val" id="t3-val">70%</span></div>
+  <div class="row"><label>Recurring vs one-off revenue</label><input type="range" min="0" max="100" step="5" value="30" id="recurring" oninput="sync(this,'rec-val')"><span class="val" id="rec-val">30%</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">OPERATIONAL DEPENDENCIES</div>
+  <div class="row"><label>Key person dependency</label><input type="range" min="0" max="100" step="5" value="60" id="keyperson" oninput="sync(this,'kp-val')"><span class="val" id="kp-val">60%</span></div>
+  <div class="row"><label>Single supplier reliance</label><input type="range" min="0" max="100" step="5" value="50" id="supplier" oninput="sync(this,'sup-val')"><span class="val" id="sup-val">50%</span></div>
+  <div class="row"><label>Operations documented</label><input type="range" min="0" max="100" step="5" value="20" id="docs" oninput="sync(this,'doc-val')"><span class="val" id="doc-val">20%</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">FINANCIAL BUFFER</div>
+  <div class="row"><label>Cash runway (months)</label><input type="range" min="0" max="24" step="1" value="3" id="runway" oninput="sync(this,'run-val')"><span class="val" id="run-val">3 mo</span></div>
+  <div class="row"><label>Credit line available</label><input type="range" min="0" max="100" step="5" value="20" id="credit" oninput="sync(this,'cr-val')"><span class="val" id="cr-val">20%</span></div>
+</div>
+
+<div class="scenario-label" style="margin-top:1.5rem">SELECT A SHOCK SCENARIO</div>
+<div class="scenarios">
+  <div class="scenario-btn active" onclick="setScenario(this,'client')">Top client leaves</div>
+  <div class="scenario-btn" onclick="setScenario(this,'person')">Key person lost</div>
+  <div class="scenario-btn" onclick="setScenario(this,'supply')">Supplier fails</div>
+  <div class="scenario-btn" onclick="setScenario(this,'market')">Market contraction</div>
+</div>
+
+<button class="run-btn" onclick="runTest()">Run stress test →</button>
+
+<div class="results" id="results">
+  <div class="result-section">
+    <div class="result-header">
+      <div class="survival-num" id="survival-num">—</div>
+      <div class="survival-label">estimated survival window</div>
+    </div>
+    <div class="impact-grid">
+      <div class="impact-card"><div class="impact-label">Revenue impact</div><div class="impact-val" id="rev-impact">—</div></div>
+      <div class="impact-card"><div class="impact-label">Recovery difficulty</div><div class="impact-val" id="rec-diff">—</div></div>
+      <div class="impact-card"><div class="impact-label">Operational disruption</div><div class="impact-val" id="ops-dis">—</div></div>
+      <div class="impact-card"><div class="impact-label">Overall risk rating</div><div class="impact-val" id="risk-rating">—</div></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <div class="actions-title">PRIORITY ACTIONS</div>
+    <div id="actions"></div>
+    <button class="reset-btn" onclick="reset()">← Run another scenario</button>
+  </div>
+</div>
+
+<script>
+let activeScenario = 'client';
+
+function sync(el, outId) {
+  const v = parseInt(el.value);
+  document.getElementById(outId).textContent = el.id === 'runway' ? v + ' mo' : v + '%';
+}
+
+function setScenario(el, s) {
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  activeScenario = s;
+}
+
+function val(id) { return parseInt(document.getElementById(id).value); }
+
+function runTest() {
+  const topClient = val('top-client');
+  const top3 = val('top3');
+  const recurring = val('recurring');
+  const keyPerson = val('keyperson');
+  const supplier = val('supplier');
+  const docs = val('docs');
+  const runway = val('runway');
+  const credit = val('credit');
+
+  const bufferMonths = runway + (credit / 100) * 6;
+  let revImpact, opsDis, recDiff, verdictText, actions, survivalMonths;
+
+  if (activeScenario === 'client') {
+    revImpact = topClient;
+    opsDis = Math.round((100 - docs) * 0.3);
+    recDiff = Math.round((topClient * 0.6) + ((100 - recurring) * 0.4));
+    survivalMonths = Math.max(1, Math.round(bufferMonths * (1 - topClient / 100) + bufferMonths * 0.3));
+    verdictText = `Losing your top client removes ${topClient}% of revenue immediately. With ${runway} months cash runway and ${recurring}% recurring revenue, you have a narrow window to replace that income before operations are threatened.`;
+    actions = ["Reduce top client dependency below 25% of revenue before this scenario becomes real.", "Build a pipeline of 3–5 smaller clients now — diversification is the only real hedge.", "Convert any project-based work with existing clients to retainer or subscription arrangements."];
+  } else if (activeScenario === 'person') {
+    revImpact = Math.round(keyPerson * 0.4);
+    opsDis = Math.round(keyPerson * 0.8 * (1 - docs / 100));
+    recDiff = Math.round(keyPerson * 0.5 + (100 - docs) * 0.5);
+    survivalMonths = Math.max(1, Math.round(bufferMonths * (1 - keyPerson / 200)));
+    verdictText = `With ${keyPerson}% key person dependency and only ${docs}% of operations documented, losing that person causes immediate operational collapse in those areas. Recovery time depends almost entirely on how much knowledge exists only in someone's head.`;
+    actions = ["Document the top 5 critical processes this person owns — start this week.", "Cross-train at least one other person on each critical function.", "Build succession readiness: if they left tomorrow, what breaks first?"];
+  } else if (activeScenario === 'supply') {
+    revImpact = Math.round(supplier * 0.5);
+    opsDis = Math.round(supplier * 0.7);
+    recDiff = Math.round(supplier * 0.6);
+    survivalMonths = Math.max(1, Math.round(bufferMonths * (1 - supplier / 150)));
+    verdictText = `A ${supplier}% reliance on a single supplier means their failure directly disrupts your ability to deliver. Most businesses don't identify backup suppliers until after the crisis — by then the damage is done.`;
+    actions = ["Identify and qualify at least one backup supplier for every critical input.", "Negotiate supply agreements that include force majeure and alternative sourcing clauses.", "Hold a minimum strategic inventory buffer for your most critical components."];
+  } else {
+    revImpact = Math.round((100 - recurring) * 0.5 + top3 * 0.3);
+    opsDis = Math.round((100 - docs) * 0.2);
+    recDiff = Math.round(80 - recurring * 0.5);
+    survivalMonths = Math.max(1, Math.round(bufferMonths * (recurring / 100 + 0.3)));
+    verdictText = `A market contraction hits businesses with low recurring revenue hardest. With ${recurring}% recurring revenue and ${top3}% concentrated in your top 3 clients, a broad market pullback compresses both new business and retention simultaneously.`;
+    actions = ["Shift as much revenue as possible to recurring models — retainers, subscriptions, maintenance contracts.", "Reduce fixed cost base now, before a contraction forces it.", "Identify which of your services remain essential even in a downturn — double down on those."];
+  }
+
+  const riskScore = Math.round((revImpact * 0.4) + (opsDis * 0.3) + (recDiff * 0.3));
+  const riskLabel = riskScore >= 70 ? 'Critical' : riskScore >= 50 ? 'High' : riskScore >= 30 ? 'Moderate' : 'Manageable';
+  const riskColor = riskScore >= 70 ? '#E24B4A' : riskScore >= 50 ? '#D85A30' : riskScore >= 30 ? '#BA7517' : '#1D9E75';
+  const survivalText = survivalMonths >= 12 ? '12+ months' : survivalMonths + ' months';
+  const survivalColor = survivalMonths <= 2 ? '#E24B4A' : survivalMonths <= 4 ? '#D85A30' : survivalMonths <= 8 ? '#BA7517' : '#1D9E75';
+
+  document.getElementById('survival-num').textContent = survivalText;
+  document.getElementById('survival-num').style.color = survivalColor;
+  document.getElementById('rev-impact').textContent = revImpact + '%';
+  document.getElementById('rev-impact').style.color = revImpact >= 50 ? '#E24B4A' : revImpact >= 30 ? '#D85A30' : '#1D9E75';
+  document.getElementById('rec-diff').textContent = recDiff >= 70 ? 'Very hard' : recDiff >= 50 ? 'Hard' : recDiff >= 30 ? 'Moderate' : 'Manageable';
+  document.getElementById('ops-dis').textContent = opsDis >= 70 ? 'Severe' : opsDis >= 50 ? 'High' : opsDis >= 30 ? 'Moderate' : 'Low';
+  document.getElementById('risk-rating').textContent = riskLabel;
+  document.getElementById('risk-rating').style.color = riskColor;
+  document.getElementById('verdict').innerHTML = '<p>' + verdictText + '</p>';
+  document.getElementById('actions').innerHTML = actions.map((a, i) => `<div class="action-item"><div class="action-num">${i + 1}</div><div>${a}</div></div>`).join('');
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function reset() {
+  document.getElementById('results').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
